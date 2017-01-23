@@ -8,5 +8,7 @@ include_directories(${GTK3_INCLUDE_DIRS})
 link_directories(${GTK3_LIBRARY_DIRS})
 add_definitions(${GTK3_CFLAGS_OTHER})
 
-add_executable(octopus src/main.c)
+set(CMAKE_C_FLAGS "-Wall -Werror -pedantic -std=c99")
+
+add_executable(octopus src/main.c src/oct-task-view.c)
 target_link_libraries(octopus ${GTK3_LIBRARIES})

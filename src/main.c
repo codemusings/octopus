@@ -1,10 +1,16 @@
 #include <gtk/gtk.h>
 
+#include "oct-task-view.h"
+
 static void
 oct_application_activate(GApplication* app, gpointer user_data)
 {
+    GtkWidget* task_view = oct_task_view_new();
+
     GtkWidget* window = gtk_application_window_new(GTK_APPLICATION(app));
     gtk_window_set_title(GTK_WINDOW(window), "Octopus");
+    gtk_container_add(GTK_CONTAINER(window), task_view);
+
     gtk_widget_show_all(window);
 }
 
