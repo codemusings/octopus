@@ -18,6 +18,7 @@ enum {
     COLUMN_ROWID,
     COLUMN_CHECKED,
     COLUMN_TITLE,
+    COLUMN_TITLE_COLOR,
     COLUMN_CHECKBOX_VISIBLE,
     COLUMN_EDITABLE,
     NUM_COLUMNS
@@ -34,7 +35,8 @@ oct_task_view_init(OctTaskView* self)
     gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(self), FALSE);
 
     GtkListStore* store = gtk_list_store_new(NUM_COLUMNS, G_TYPE_INT64,
-        G_TYPE_BOOLEAN, G_TYPE_STRING, G_TYPE_BOOLEAN, G_TYPE_BOOLEAN);
+        G_TYPE_BOOLEAN, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_BOOLEAN,
+        G_TYPE_BOOLEAN);
 
     GtkTreeIter iter;
     gtk_list_store_append(store, &iter);
@@ -42,6 +44,7 @@ oct_task_view_init(OctTaskView* self)
         COLUMN_ROWID, 0,
         COLUMN_CHECKED, FALSE,
         COLUMN_TITLE, "New task...",
+        COLUMN_TITLE_COLOR, "#000000",
         COLUMN_CHECKBOX_VISIBLE, FALSE,
         COLUMN_EDITABLE, TRUE,
         -1);
@@ -67,6 +70,8 @@ oct_task_view_init(OctTaskView* self)
     title_column = gtk_tree_view_column_new_with_attributes(
         "", title_renderer,
         "editable", COLUMN_EDITABLE,
+        "foreground", COLUMN_TITLE_COLOR,
+        "strikethrough", COLUMN_CHECKED,
         "text", COLUMN_TITLE, NULL);
     gtk_tree_view_append_column(GTK_TREE_VIEW(self), title_column);
 }
@@ -110,7 +115,10 @@ oct_task_view_checkbox_toggled(GtkCellRendererToggle* renderer,
     gtk_tree_model_get(model, &iter, COLUMN_CHECKED, &checked, -1);
 
     gtk_list_store_set(GTK_LIST_STORE(model), &iter,
-        COLUMN_CHECKED, !checked, -1);
+        COLUMN_CHECKED, !checked,
+        COLUMN_TITLE_COLOR, checked ? "#000000" : "#aaaaaa",
+        COLUMN_EDITABLE, checked,
+        -1);
 }
 
 GtkWidget*
