@@ -31,6 +31,8 @@ oct_task_view_class_init(OctTaskViewClass* class)
 static void
 oct_task_view_init(OctTaskView* self)
 {
+    gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(self), FALSE);
+
     GtkListStore* store = gtk_list_store_new(NUM_COLUMNS, G_TYPE_INT64,
         G_TYPE_BOOLEAN, G_TYPE_STRING, G_TYPE_BOOLEAN, G_TYPE_BOOLEAN);
 

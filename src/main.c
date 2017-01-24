@@ -8,6 +8,8 @@ oct_application_activate(GApplication* app, gpointer user_data)
     GtkWidget* task_view = oct_task_view_new();
 
     GtkWidget* window = gtk_application_window_new(GTK_APPLICATION(app));
+    gtk_window_set_default_size(GTK_WINDOW(window), 300, 400);
+    gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
     gtk_window_set_title(GTK_WINDOW(window), "Octopus");
     gtk_container_add(GTK_CONTAINER(window), task_view);
 
