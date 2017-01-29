@@ -10,5 +10,8 @@ add_definitions(${GTK3_CFLAGS_OTHER})
 
 set(CMAKE_C_FLAGS "-Wall -Werror -pedantic -std=c99")
 
-add_executable(octopus src/main.c src/oct-task-view.c)
+add_executable(octopus
+    src/main.c
+    src/oct-cell-renderer-button.c
+    src/oct-task-view.c)
 target_link_libraries(octopus ${GTK3_LIBRARIES})
