@@ -158,7 +158,7 @@ oct_cell_renderer_button_render(GtkCellRenderer*     renderer,
     double offset = cos(M_PI / 4.0) * r - 3;
     cairo_move_to(cr, x - offset, y - offset);
     cairo_line_to(cr, x + offset, y + offset);
-    cairo_set_source_rgb(cr, 0.5, 0.5, 0.5);
+    cairo_set_source_rgb(cr, 0.25, 0.25, 0.25);
     cairo_set_line_width(cr, 1.5);
     cairo_stroke(cr);
 
