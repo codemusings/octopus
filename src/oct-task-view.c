@@ -14,12 +14,22 @@ oct_task_view_delete_button_clicked(OctCellRendererButton*,
                                     gchar*,
                                     OctTaskView*);
 static void
+oct_task_view_set_property(GObject*, guint, const GValue*, GParamSpec*);
+
+static void
 oct_task_view_title_edited(GtkCellRendererText*, gchar*, gchar*, OctTaskView*);
 
 struct _OctTaskView {
     GtkTreeView parent_instance;
+    sqlite3*    database;
 };
 G_DEFINE_TYPE(OctTaskView, oct_task_view, GTK_TYPE_TREE_VIEW)
+
+enum {
+    PROP_DATABASE = 1,
+    NUM_PROPS
+};
+static GParamSpec* properties[NUM_PROPS];
 
 enum {
     COLUMN_ROWID,
@@ -54,6 +64,12 @@ oct_task_view_checkbox_toggled(GtkCellRendererToggle* renderer,
 static void
 oct_task_view_class_init(OctTaskViewClass* class)
 {
+    GObjectClass* object_class = G_OBJECT_CLASS(class);
+    object_class->set_property = oct_task_view_set_property;
+
+    properties[PROP_DATABASE] = g_param_spec_pointer("database",
+        "database", "database", G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
+    g_object_class_install_properties(object_class, NUM_PROPS, properties);
 }
 
 static void
@@ -130,6 +146,22 @@ oct_task_view_init(OctTaskView* self)
 }
 
 static void
+oct_task_view_set_property(GObject*      object,
+                           guint         property_id,
+                           const GValue* value,
+                           GParamSpec*   spec)
+{
+    OctTaskView* self = OCT_TASK_VIEW(object);
+    switch (property_id) {
+        case PROP_DATABASE:
+            self->database = g_value_get_pointer(value);
+            break;
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, spec);
+    }
+}
+
+static void
 oct_task_view_title_edited(GtkCellRendererText* renderer,
                            gchar*               path_string,
                            gchar*               new_text,
@@ -162,7 +194,7 @@ oct_task_view_title_edited(GtkCellRendererText* renderer,
 }
 
 GtkWidget*
-oct_task_view_new(void)
+oct_task_view_new(sqlite3* database)
 {
-    return g_object_new(OCT_TYPE_TASK_VIEW, NULL);
+    return g_object_new(OCT_TYPE_TASK_VIEW, "database", database, NULL);
 }
