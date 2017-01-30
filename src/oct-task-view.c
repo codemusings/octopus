@@ -1,6 +1,9 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <sqlite3.h>
+
+#include "octopus.h"
 #include "oct-cell-renderer-button.h"
 #include "oct-task-view.h"
 
@@ -8,6 +11,9 @@
 
 static void
 oct_task_view_checkbox_toggled(GtkCellRendererToggle*, gchar*, OctTaskView*);
+
+static void
+oct_task_view_constructed(GObject*);
 
 static void
 oct_task_view_delete_button_clicked(OctCellRendererButton*,
@@ -51,8 +57,16 @@ oct_task_view_checkbox_toggled(GtkCellRendererToggle* renderer,
     GtkTreeIter iter;
     gtk_tree_model_get_iter_from_string(model, &iter, path_string);
 
+    sqlite3_int64 rowid;
+    char* description;
     gboolean checked;
-    gtk_tree_model_get(model, &iter, COLUMN_CHECKED, &checked, -1);
+    gtk_tree_model_get(model, &iter,
+        COLUMN_ROWID, &rowid,
+        COLUMN_TITLE, &description,
+        COLUMN_CHECKED, &checked,
+        -1);
+
+    oct_task_update(self->database, rowid, description, !checked);
 
     gtk_list_store_set(GTK_LIST_STORE(model), &iter,
         COLUMN_CHECKED, !checked,
@@ -62,9 +76,61 @@ oct_task_view_checkbox_toggled(GtkCellRendererToggle* renderer,
 }
 
 static void
+oct_task_view_constructed(GObject* object)
+{
+    OctTaskView* self = OCT_TASK_VIEW(object);
+    gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(self), FALSE);
+
+    GtkListStore* store = gtk_list_store_new(NUM_COLUMNS,
+        G_TYPE_INT64,   /* COLUMN_ROWID */
+        G_TYPE_BOOLEAN, /* COLUMN_CHECKED */
+        G_TYPE_BOOLEAN, /* COLUMN_CONTROLS_VISIBLE */
+        G_TYPE_BOOLEAN, /* COLUMN_CHECKBOX_EDITABLE */
+        G_TYPE_STRING,  /* COLUMN_TITLE */
+        G_TYPE_BOOLEAN, /* COLUMN_TITLE_EDITABLE */
+        G_TYPE_STRING   /* COLUMN_TITLE_COLOR */
+    );
+
+    GtkTreeIter iter;
+    OctTask** tasks = oct_task_fetch_all(self->database);
+    int i = 0;
+    for (OctTask* task = tasks[i]; task != NULL; task = tasks[++i]) {
+        gtk_list_store_append(store, &iter);
+        gtk_list_store_set(store, &iter,
+            COLUMN_ROWID, task->rowid,
+            COLUMN_CHECKED, task->completed,
+            COLUMN_CONTROLS_VISIBLE, TRUE,
+            COLUMN_CHECKBOX_EDITABLE, TRUE,
+            COLUMN_TITLE, task->description,
+            COLUMN_TITLE_EDITABLE, TRUE,
+            COLUMN_TITLE_COLOR, "#000000",
+            -1);
+        free(task);
+    }
+    free(tasks);
+
+    gtk_list_store_append(store, &iter);
+    gtk_list_store_set(store, &iter,
+        COLUMN_ROWID, 0,
+        COLUMN_CHECKED, FALSE,
+        COLUMN_CONTROLS_VISIBLE, FALSE,
+        COLUMN_CHECKBOX_EDITABLE, TRUE,
+        COLUMN_TITLE, NEW_TASK_PLACEHOLDER,
+        COLUMN_TITLE_EDITABLE, TRUE,
+        COLUMN_TITLE_COLOR, "#000000",
+        -1);
+
+    gtk_tree_view_set_model(GTK_TREE_VIEW(self), GTK_TREE_MODEL(store));
+    g_object_unref(store);
+
+    G_OBJECT_CLASS(oct_task_view_parent_class)->constructed(object);
+}
+
+static void
 oct_task_view_class_init(OctTaskViewClass* class)
 {
     GObjectClass* object_class = G_OBJECT_CLASS(class);
+    object_class->constructed = oct_task_view_constructed;
     object_class->set_property = oct_task_view_set_property;
 
     properties[PROP_DATABASE] = g_param_spec_pointer("database",
@@ -80,38 +146,17 @@ oct_task_view_delete_button_clicked(OctCellRendererButton* renderer,
     GtkTreeModel* model = gtk_tree_view_get_model(GTK_TREE_VIEW(self));
     GtkTreeIter iter;
     gtk_tree_model_get_iter_from_string(model, &iter, path_string);
+
+    sqlite3_int64 rowid;
+    gtk_tree_model_get(model, &iter, COLUMN_ROWID, &rowid, -1);
+    oct_task_delete(self->database, rowid);
+
     gtk_list_store_remove(GTK_LIST_STORE(model), &iter);
 }
 
 static void
 oct_task_view_init(OctTaskView* self)
 {
-    gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(self), FALSE);
-
-    GtkListStore* store = gtk_list_store_new(NUM_COLUMNS,
-        G_TYPE_INT64,   /* COLUMN_ROWID */
-        G_TYPE_BOOLEAN, /* COLUMN_CHECKED */
-        G_TYPE_BOOLEAN, /* COLUMN_CONTROLS_VISIBLE */
-        G_TYPE_BOOLEAN, /* COLUMN_CHECKBOX_EDITABLE */
-        G_TYPE_STRING,  /* COLUMN_TITLE */
-        G_TYPE_BOOLEAN, /* COLUMN_TITLE_EDITABLE */
-        G_TYPE_STRING   /* COLUMN_TITLE_COLOR */
-    );
-
-    GtkTreeIter iter;
-    gtk_list_store_append(store, &iter);
-    gtk_list_store_set(store, &iter,
-        COLUMN_ROWID, 0,
-        COLUMN_CHECKED, FALSE,
-        COLUMN_CONTROLS_VISIBLE, FALSE,
-        COLUMN_CHECKBOX_EDITABLE, TRUE,
-        COLUMN_TITLE, NEW_TASK_PLACEHOLDER,
-        COLUMN_TITLE_EDITABLE, TRUE,
-        COLUMN_TITLE_COLOR, "#000000",
-        -1);
-
-    gtk_tree_view_set_model(GTK_TREE_VIEW(self), GTK_TREE_MODEL(store));
-    g_object_unref(store);
 
     GtkCellRenderer* delete_renderer = oct_cell_renderer_button_new();
     g_signal_connect(delete_renderer, "clicked",
@@ -177,17 +222,25 @@ oct_task_view_title_edited(GtkCellRendererText* renderer,
     }
 
     if (atoi(path_string) == num_tasks - 1) {
+        sqlite3_int64 rowid = oct_task_add(self->database, new_text);
         gtk_list_store_insert_before(GTK_LIST_STORE(model), &new_iter, &iter);
         gtk_list_store_set(GTK_LIST_STORE(model), &new_iter,
-            COLUMN_ROWID, num_tasks,
+            COLUMN_ROWID, rowid,
             COLUMN_CHECKED, FALSE,
             COLUMN_CONTROLS_VISIBLE, TRUE,
             COLUMN_CHECKBOX_EDITABLE, TRUE,
-            COLUMN_TITLE, g_strdup(new_text),
+            COLUMN_TITLE, new_text,
             COLUMN_TITLE_EDITABLE, TRUE,
             COLUMN_TITLE_COLOR, "#000000",
             -1);
     } else {
+        sqlite3_int64 rowid;
+        gboolean checked;
+        gtk_tree_model_get(model, &iter,
+            COLUMN_ROWID, &rowid,
+            COLUMN_CHECKED, &checked,
+            -1);
+        oct_task_update(self->database, rowid, new_text, checked);
         gtk_list_store_set(GTK_LIST_STORE(model), &iter,
             COLUMN_TITLE, new_text, -1);
     }

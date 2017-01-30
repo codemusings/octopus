@@ -31,6 +31,7 @@ add_custom_command(
 
 add_executable(octopus
     src/main.c
+    src/octopus.c
     src/oct-cell-renderer-button.c
     src/oct-resources.h
     src/oct-resources.c
