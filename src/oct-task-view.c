@@ -103,7 +103,7 @@ oct_task_view_constructed(GObject* object)
             COLUMN_CHECKBOX_EDITABLE, TRUE,
             COLUMN_TITLE, task->description,
             COLUMN_TITLE_EDITABLE, TRUE,
-            COLUMN_TITLE_COLOR, "#000000",
+            COLUMN_TITLE_COLOR, task->completed ? "#aaaaaa" : "#000000",
             -1);
         free(task);
     }
