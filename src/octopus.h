@@ -4,6 +4,18 @@
 #include <stdbool.h>
 #include <sqlite3.h>
 
+
+/** S Y N C I N G *************************************************************/
+typedef struct {
+    char* host;
+    int port;
+    char* username;
+    char* password;
+    char* token;
+} OctSync;
+
+
+/** T A S K S *****************************************************************/
 typedef struct {
     sqlite3_int64 rowid;
     char* description;

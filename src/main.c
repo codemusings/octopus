@@ -5,7 +5,11 @@
 #include <sqlite3.h>
 
 #include "oct-resources.h"
+#include "oct-settings-popover.h"
 #include "oct-task-view.h"
+
+static OctSync* sync = NULL;
+static GtkWidget* settings_popover = NULL;
 
 static void
 oct_application_activate(GApplication*, sqlite3*);
@@ -19,12 +23,33 @@ oct_application_shutdown(GApplication*, sqlite3*);
 static void
 oct_application_activate(GApplication* app, sqlite3* database)
 {
+    sync = malloc(sizeof(*sync));
+    sync->host = g_strdup("localhost");
+    sync->port = 443;
+    sync->username = g_strdup("user");
+    sync->password = g_strdup("secret");
+
+    GtkWidget* settings_icon = gtk_image_new_from_icon_name(
+        "emblem-system-symbolic", GTK_ICON_SIZE_BUTTON);
+    GtkWidget* settings_button = gtk_menu_button_new();
+    gtk_button_set_image(GTK_BUTTON(settings_button), settings_icon);
+
+    settings_popover = oct_settings_popover_new(settings_button, sync);
+    gtk_menu_button_set_popover(
+        GTK_MENU_BUTTON(settings_button), settings_popover);
+
+    GtkWidget* header_bar = gtk_header_bar_new();
+    gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(header_bar), TRUE);
+    gtk_header_bar_set_title(GTK_HEADER_BAR(header_bar), "Octopus");
+    gtk_header_bar_set_subtitle(GTK_HEADER_BAR(header_bar), "Sync is not enabled");
+    gtk_header_bar_pack_start(GTK_HEADER_BAR(header_bar), settings_button);
+
     GtkWidget* task_view = oct_task_view_new(database);
 
     GtkWidget* window = gtk_application_window_new(GTK_APPLICATION(app));
     gtk_window_set_default_size(GTK_WINDOW(window), 300, 400);
     gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
-    gtk_window_set_title(GTK_WINDOW(window), "Octopus");
+    gtk_window_set_titlebar(GTK_WINDOW(window), header_bar);
     gtk_container_add(GTK_CONTAINER(window), task_view);
 
     gtk_widget_show_all(window);
