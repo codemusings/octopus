@@ -1,6 +1,7 @@
 #ifndef __OCTOPUS_H__
 #define __OCTOPUS_H__
 
+#include <gtk/gtk.h>
 #include <stdbool.h>
 #include <sqlite3.h>
 
@@ -8,11 +9,14 @@
 /** S Y N C I N G *************************************************************/
 typedef struct {
     char* host;
-    int port;
+    long port;
     char* username;
     char* password;
     char* token;
 } OctSync;
+
+void
+oct_sync_auth(GTask*, gpointer, gpointer, GCancellable*);
 
 
 /** T A S K S *****************************************************************/

@@ -1,25 +1,36 @@
+#include "octopus.h"
 #include "oct-settings-popover.h"
 
 static void
 oct_settings_popover_constructed(GObject*);
 
 static void
+oct_settings_popover_entry_changed(GtkEditable*, OctSettingsPopover*);
+
+static void
+oct_settings_popover_port_value_changed(GtkSpinButton*, OctSettingsPopover*);
+
+static void
 oct_settings_popover_save_button_clicked(GtkButton*, gpointer);
+
+static void
+oct_settings_popover_test_button_clicked(GtkButton*, OctSettingsPopover*);
+
+static void
+oct_settings_popover_test_complete(GObject*, GAsyncResult*, gpointer);
 
 static void
 oct_settings_popover_set_property(GObject*, guint, const GValue*, GParamSpec*);
 
-static void
-oct_settings_popover_toggle_buttons(GtkEditable*, OctSettingsPopover*);
-
 struct _OctSettingsPopover {
-    GtkPopover parent_instance;
-    OctSync*   sync;
-    GtkEntry*  host_entry;
-    GtkEntry*  username_entry;
-    GtkEntry*  password_entry;
-    GtkButton* test_button;
-    GtkButton* save_button;
+    GtkPopover  parent_instance;
+    OctSync*    sync;
+    GtkEntry*   host_entry;
+    GtkEntry*   username_entry;
+    GtkEntry*   password_entry;
+    GtkSpinner* spinner;
+    GtkButton*  test_button;
+    GtkButton*  save_button;
 };
 G_DEFINE_TYPE(OctSettingsPopover, oct_settings_popover, GTK_TYPE_POPOVER)
 
@@ -52,7 +63,7 @@ oct_settings_popover_constructed(GObject* object)
     gtk_entry_set_placeholder_text(self->host_entry, "octopus.org");
     gtk_entry_set_activates_default(self->host_entry, TRUE);
     g_signal_connect(self->host_entry, "changed",
-        G_CALLBACK(oct_settings_popover_toggle_buttons), self);
+        G_CALLBACK(oct_settings_popover_entry_changed), self);
 
     GtkWidget* port_label = gtk_label_new("Port:");
     gtk_label_set_xalign(GTK_LABEL(port_label), 1);
@@ -60,6 +71,8 @@ oct_settings_popover_constructed(GObject* object)
     port_spin_button = gtk_spin_button_new_with_range(0, G_MAXDOUBLE, 1);
     gtk_spin_button_set_value(
         GTK_SPIN_BUTTON(port_spin_button), self->sync->port);
+    g_signal_connect(port_spin_button, "value-changed",
+        G_CALLBACK(oct_settings_popover_port_value_changed), self);
 
     GtkWidget* username_label = gtk_label_new("Username:");
     gtk_label_set_xalign(GTK_LABEL(username_label), 1);
@@ -67,7 +80,7 @@ oct_settings_popover_constructed(GObject* object)
     gtk_entry_set_text(self->username_entry, self->sync->username);
     gtk_entry_set_activates_default(self->username_entry, TRUE);
     g_signal_connect(self->username_entry, "changed",
-        G_CALLBACK(oct_settings_popover_toggle_buttons), self);
+        G_CALLBACK(oct_settings_popover_entry_changed), self);
 
     GtkWidget* password_label = gtk_label_new("Password:");
     gtk_label_set_xalign(GTK_LABEL(password_label), 1);
@@ -78,9 +91,13 @@ oct_settings_popover_constructed(GObject* object)
     gtk_entry_set_text(self->password_entry, self->sync->password);
     gtk_entry_set_activates_default(self->password_entry, TRUE);
     g_signal_connect(self->password_entry, "changed",
-        G_CALLBACK(oct_settings_popover_toggle_buttons), self);
+        G_CALLBACK(oct_settings_popover_entry_changed), self);
 
     self->test_button = GTK_BUTTON(gtk_button_new_with_label("Test"));
+    g_signal_connect(self->test_button, "clicked",
+        G_CALLBACK(oct_settings_popover_test_button_clicked), self);
+
+    self->spinner = GTK_SPINNER(gtk_spinner_new());
 
     self->save_button = GTK_BUTTON(gtk_button_new_with_label("Save"));
     gtk_widget_set_can_default(GTK_WIDGET(self->save_button), TRUE);
@@ -96,6 +113,8 @@ oct_settings_popover_constructed(GObject* object)
     GtkWidget* button_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
     gtk_box_pack_start(GTK_BOX(button_box),
         GTK_WIDGET(self->test_button), TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(button_box),
+        GTK_WIDGET(self->spinner), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(button_box),
         GTK_WIDGET(self->save_button), TRUE, TRUE, 0);
 
@@ -121,9 +140,46 @@ oct_settings_popover_constructed(GObject* object)
     gtk_popover_set_default_widget(
         GTK_POPOVER(self), GTK_WIDGET(self->save_button));
 
-    oct_settings_popover_toggle_buttons(NULL, self);
+    oct_settings_popover_entry_changed(NULL, self);
 
     G_OBJECT_CLASS(oct_settings_popover_parent_class)->constructed(object);
+}
+
+static void
+oct_settings_popover_entry_changed(GtkEditable*        editable,
+                                   OctSettingsPopover* self)
+{
+    if (GTK_ENTRY(editable) == self->host_entry) {
+        if (self->sync && self->sync->host) {
+            g_free(self->sync->host);
+        }
+        self->sync->host = g_strdup(gtk_entry_get_text(self->host_entry));
+    } else if (GTK_ENTRY(editable) == self->username_entry) {
+        if (self->sync && self->sync->username) {
+            g_free(self->sync->username);
+        }
+        self->sync->username = g_strdup(
+            gtk_entry_get_text(self->username_entry));
+    } else if (GTK_ENTRY(editable) == self->password_entry) {
+        if (self->sync && self->sync->password) {
+            g_free(self->sync->password);
+        }
+        self->sync->password = g_strdup(
+            gtk_entry_get_text(self->password_entry));
+    }
+
+    gboolean enabled = gtk_entry_get_text_length(self->host_entry) > 0;
+    enabled &= gtk_entry_get_text_length(self->username_entry) > 0;
+    enabled &= gtk_entry_get_text_length(self->password_entry) > 0;
+    gtk_widget_set_sensitive(GTK_WIDGET(self->test_button), enabled);
+    gtk_widget_set_sensitive(GTK_WIDGET(self->save_button), enabled);
+}
+
+static void
+oct_settings_popover_port_value_changed(GtkSpinButton*      spin_button,
+                                        OctSettingsPopover* self)
+{
+    self->sync->port = gtk_spin_button_get_value_as_int(spin_button);
 }
 
 static void
@@ -135,6 +191,26 @@ static void
 oct_settings_popover_save_button_clicked(GtkButton* button, gpointer user_data)
 {
     gtk_widget_hide(GTK_WIDGET(user_data));
+}
+
+static void
+oct_settings_popover_test_button_clicked(GtkButton*          button,
+                                         OctSettingsPopover* self)
+{
+    gtk_spinner_start(self->spinner);
+    GTask* task = g_task_new(
+        self, NULL, oct_settings_popover_test_complete, NULL);
+    g_task_set_task_data(task, self->sync, NULL);
+    g_task_run_in_thread(task, oct_sync_auth);
+}
+
+static void
+oct_settings_popover_test_complete(GObject*      source_object,
+                                   GAsyncResult* result,
+                                   gpointer      user_data)
+{
+    OctSettingsPopover* self = OCT_SETTINGS_POPOVER(source_object);
+    gtk_spinner_stop(self->spinner);
 }
 
 static void
@@ -151,17 +227,6 @@ oct_settings_popover_set_property(GObject*      object,
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, spec);
     }
-}
-
-static void
-oct_settings_popover_toggle_buttons(GtkEditable*        editable,
-                                    OctSettingsPopover* self)
-{
-    gboolean enabled = gtk_entry_get_text_length(self->host_entry) > 0;
-    enabled &= gtk_entry_get_text_length(self->username_entry) > 0;
-    enabled &= gtk_entry_get_text_length(self->password_entry) > 0;
-    gtk_widget_set_sensitive(GTK_WIDGET(self->test_button), enabled);
-    gtk_widget_set_sensitive(GTK_WIDGET(self->save_button), enabled);
 }
 
 GtkWidget*
