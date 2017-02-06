@@ -108,10 +108,16 @@ static void
 oct_application_shutdown(GApplication* app, sqlite3* database)
 {
     sqlite3_close(database);
+
     g_settings_set_string(settings, "sync-host", sync->host);
     g_settings_set_int(settings, "sync-port", sync->port);
     g_settings_set_string(settings, "sync-username", sync->username);
     g_settings_set_string(settings, "sync-password", sync->password);
+
+    g_free(sync->host);
+    g_free(sync->username);
+    g_free(sync->password);
+    g_free(sync);
 }
 
 int main(int argc, char** argv)
