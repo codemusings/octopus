@@ -29,28 +29,35 @@ add_definitions(
 set(CMAKE_C_FLAGS "-Wall -Werror -pedantic -std=c99")
 
 add_custom_command(
-    OUTPUT src/oct-resources.h
+    OUTPUT ${CMAKE_SOURCE_DIR}/src/oct-resources.h
     COMMAND glib-compile-resources
+        --sourcedir=${CMAKE_SOURCE_DIR}/res
         --generate-header
-        --target src/oct-resources.h
-        --c-name oct res/de.codemusings.Octopus.gresource.xml)
+        --target ${CMAKE_SOURCE_DIR}/src/oct-resources.h
+        --c-name oct ${CMAKE_SOURCE_DIR}/res/de.codemusings.Octopus.gresource.xml)
 
 add_custom_command(
-    OUTPUT src/oct-resources.c
+    OUTPUT ${CMAKE_SOURCE_DIR}/src/oct-resources.c
     COMMAND glib-compile-resources
+        --sourcedir=${CMAKE_SOURCE_DIR}/res
         --generate-source
-        --target src/oct-resources.c
-        --c-name oct res/de.codemusings.Octopus.gresource.xml)
+        --target ${CMAKE_SOURCE_DIR}/src/oct-resources.c
+        --c-name oct ${CMAKE_SOURCE_DIR}/res/de.codemusings.Octopus.gresource.xml)
+
+set_directory_properties(ADDITIONAL_MAKE_CLEAN_FILES
+    ${CMAKE_SOURCE_DIR}/src/oct-resources.h
+    ${CMAKE_SOURCE_DIR}/src/oct-resources.c
+)
 
 add_executable(octopus
-    src/main.c
-    src/octopus.c
-    src/oct-cell-renderer-button.c
-    src/oct-resources.h
-    src/oct-resources.c
-    src/oct-settings-popover.c
-    src/oct-sync.c
-    src/oct-task-view.c
+    ${CMAKE_SOURCE_DIR}/src/main.c
+    ${CMAKE_SOURCE_DIR}/src/octopus.c
+    ${CMAKE_SOURCE_DIR}/src/oct-cell-renderer-button.c
+    ${CMAKE_SOURCE_DIR}/src/oct-resources.h
+    ${CMAKE_SOURCE_DIR}/src/oct-resources.c
+    ${CMAKE_SOURCE_DIR}/src/oct-settings-popover.c
+    ${CMAKE_SOURCE_DIR}/src/oct-sync.c
+    ${CMAKE_SOURCE_DIR}/src/oct-task-view.c
 )
 target_link_libraries(octopus
     ${GTK3_LIBRARIES}
