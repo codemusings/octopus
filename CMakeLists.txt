@@ -65,3 +65,7 @@ target_link_libraries(octopus
     ${JSONGLIB_LIBRARIES}
     ${CURL_LIBRARIES}
 )
+install(TARGETS octopus DESTINATION bin)
+
+include(GSettings.cmake)
+add_schema(res/de.codemusings.Octopus.gschema.xml)

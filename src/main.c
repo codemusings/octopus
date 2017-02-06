@@ -8,8 +8,10 @@
 #include "oct-settings-popover.h"
 #include "oct-task-view.h"
 
+#define OCT_SCHEMA "de.codemusings.Octopus"
+
+static GSettings* settings = NULL;
 static OctSync* sync = NULL;
-static GtkWidget* settings_popover = NULL;
 
 static void
 oct_application_activate(GApplication*, sqlite3*);
@@ -23,17 +25,19 @@ oct_application_shutdown(GApplication*, sqlite3*);
 static void
 oct_application_activate(GApplication* app, sqlite3* database)
 {
+    settings = g_settings_new(OCT_SCHEMA);
     sync = malloc(sizeof(*sync));
-    sync->host = g_strdup("localhost");
-    sync->port = 443;
-    sync->username = g_strdup("user");
-    sync->password = g_strdup("secret");
+    sync->host = g_strdup(g_settings_get_string(settings, "sync-host"));
+    sync->port = g_settings_get_int(settings, "sync-port");
+    sync->username = g_strdup(g_settings_get_string(settings, "sync-username"));
+    sync->password = g_strdup(g_settings_get_string(settings, "sync-password"));
 
     GtkWidget* settings_icon = gtk_image_new_from_icon_name(
         "emblem-system-symbolic", GTK_ICON_SIZE_BUTTON);
     GtkWidget* settings_button = gtk_menu_button_new();
     gtk_button_set_image(GTK_BUTTON(settings_button), settings_icon);
 
+    GtkWidget* settings_popover;
     settings_popover = oct_settings_popover_new(settings_button, sync);
     gtk_menu_button_set_popover(
         GTK_MENU_BUTTON(settings_button), settings_popover);
@@ -41,7 +45,8 @@ oct_application_activate(GApplication* app, sqlite3* database)
     GtkWidget* header_bar = gtk_header_bar_new();
     gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(header_bar), TRUE);
     gtk_header_bar_set_title(GTK_HEADER_BAR(header_bar), "Octopus");
-    gtk_header_bar_set_subtitle(GTK_HEADER_BAR(header_bar), "Sync is not enabled");
+    gtk_header_bar_set_subtitle(GTK_HEADER_BAR(header_bar),
+        "Sync is not enabled");
     gtk_header_bar_pack_start(GTK_HEADER_BAR(header_bar), settings_button);
 
     GtkWidget* task_view = oct_task_view_new(database);
@@ -63,7 +68,7 @@ oct_application_bootstrap_db(sqlite3* database)
 
     GError* res_error = NULL;
     GBytes* data = g_resource_lookup_data(resource,
-        "/de/codemusings/Octopus/res/bootstrap.sql",
+        "/de/codemusings/Octopus/bootstrap.sql",
         G_RESOURCE_LOOKUP_FLAGS_NONE, &res_error);
     if (data == NULL) {
         fprintf(stderr,
@@ -103,6 +108,10 @@ static void
 oct_application_shutdown(GApplication* app, sqlite3* database)
 {
     sqlite3_close(database);
+    g_settings_set_string(settings, "sync-host", sync->host);
+    g_settings_set_int(settings, "sync-port", sync->port);
+    g_settings_set_string(settings, "sync-username", sync->username);
+    g_settings_set_string(settings, "sync-password", sync->password);
 }
 
 int main(int argc, char** argv)
@@ -135,7 +144,7 @@ int main(int argc, char** argv)
     }
 
     GtkApplication* app = gtk_application_new(
-        "de.codemusings.Octopus", G_APPLICATION_FLAGS_NONE);
+        OCT_SCHEMA, G_APPLICATION_FLAGS_NONE);
     g_signal_connect(app, "activate",
         G_CALLBACK(oct_application_activate), database);
     g_signal_connect(app, "shutdown",

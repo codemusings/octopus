@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<schemalist>
+    <schema id="de.codemusings.Octopus" path="/de/codemusings/Octopus/">
+        <key name="sync-host" type="s">
+            <default>""</default>
+        </key>
+        <key name="sync-port" type="i">
+            <default>443</default>
+        </key>
+        <key name="sync-username" type="s">
+            <default>""</default>
+        </key>
+        <key name="sync-password" type="s">
+            <default>""</default>
+        </key>
+    </schema>
+</schemalist>

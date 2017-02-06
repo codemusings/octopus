@@ -1,12 +1,22 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include <curl/curl.h>
 #include <json-glib/json-glib.h>
 
-#include <stdio.h>
-
 #include "octopus.h"
+
+typedef struct {
+    const CURL* handle;
+    const void* data;
+} OctSyncPayload;
 
 static size_t
 oct_sync_auth_callback(char*, size_t, size_t, void*);
+
+static OctSyncPayload*
+oct_sync_payload_new(CURL*, void*);
 
 void
 oct_sync_auth(GTask*        task,
@@ -32,12 +42,17 @@ oct_sync_auth(GTask*        task,
     CURLcode result = CURLE_OK;
     struct curl_slist* header_list = NULL;
 
+    char url[256];
+    sprintf(url, "%s/auth", sync->host);
+
     if (curl) {
 
-        curl_easy_setopt(curl, CURLOPT_URL, sync->host);
+        curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
+        curl_easy_setopt(curl, CURLOPT_URL, url);
         curl_easy_setopt(curl, CURLOPT_PORT, sync->port);
         curl_easy_setopt(curl, CURLOPT_POST, 1L);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, task);
+        curl_easy_setopt(curl,
+            CURLOPT_WRITEDATA, oct_sync_payload_new(curl, task));
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, oct_sync_auth_callback);
         result = curl_easy_setopt(curl, CURLOPT_CAPATH, ".");
         if (result != CURLE_OK) {
@@ -53,8 +68,7 @@ oct_sync_auth(GTask*        task,
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json);
         result = curl_easy_perform(curl);
         if (result != CURLE_OK) {
-            fprintf(stderr,
-                "Pushing data failed: %s\n", curl_easy_strerror(result));
+            fprintf(stderr, "Request failed: %s\n", curl_easy_strerror(result));
         }
     }
 
@@ -74,7 +88,37 @@ cleanup:
 static size_t
 oct_sync_auth_callback(char* data, size_t size, size_t num, void* user_data)
 {
-    GTask* task = G_TASK(user_data);
+    OctSyncPayload* payload = (OctSyncPayload*)user_data;
+    CURL* curl = (CURL*)payload->handle;
+    GTask* task = G_TASK(payload->data);
+    free(payload);
+
+    long status;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
+    if (status != 200) {
+        g_task_return_boolean(task, FALSE);
+        return num;
+    }
+
+    OctSync* sync = (OctSync*)g_task_get_task_data(task);
+
+    char raw[num + 1];
+    snprintf(raw, num + 1, "%s", data);
+
+    JsonNode* root = json_from_string(raw, NULL);
+    JsonObject* object = json_node_get_object(root);
+    JsonNode* token_member = json_object_get_member(object, "token");
+    sync->token = g_strdup(json_node_get_string(token_member));
+
     g_task_return_boolean(task, TRUE);
-    return num * size;
+    return num;
+}
+
+static OctSyncPayload*
+oct_sync_payload_new(CURL* handle, void* data)
+{
+    OctSyncPayload temp = {handle, data};
+    OctSyncPayload* payload = malloc(sizeof(*payload));
+    memcpy(payload, &temp, sizeof(*payload));
+    return payload;
 }

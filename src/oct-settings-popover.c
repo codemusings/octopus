@@ -23,12 +23,19 @@ static void
 oct_settings_popover_set_property(GObject*, guint, const GValue*, GParamSpec*);
 
 struct _OctSettingsPopover {
+
     GtkPopover  parent_instance;
+
     OctSync*    sync;
+
     GtkEntry*   host_entry;
     GtkEntry*   username_entry;
     GtkEntry*   password_entry;
+
     GtkSpinner* spinner;
+    GtkWidget*  success_icon;
+    GtkWidget*  error_icon;
+
     GtkButton*  test_button;
     GtkButton*  save_button;
 };
@@ -98,6 +105,11 @@ oct_settings_popover_constructed(GObject* object)
         G_CALLBACK(oct_settings_popover_test_button_clicked), self);
 
     self->spinner = GTK_SPINNER(gtk_spinner_new());
+    self->success_icon = gtk_image_new_from_icon_name("emblem-ok-symbolic",
+        GTK_ICON_SIZE_BUTTON);
+    self->error_icon = gtk_image_new_from_icon_name("emblem-important-symbolic",
+        GTK_ICON_SIZE_BUTTON);
+
 
     self->save_button = GTK_BUTTON(gtk_button_new_with_label("Save"));
     gtk_widget_set_can_default(GTK_WIDGET(self->save_button), TRUE);
@@ -116,6 +128,10 @@ oct_settings_popover_constructed(GObject* object)
     gtk_box_pack_start(GTK_BOX(button_box),
         GTK_WIDGET(self->spinner), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(button_box),
+        GTK_WIDGET(self->success_icon), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(button_box),
+        GTK_WIDGET(self->error_icon), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(button_box),
         GTK_WIDGET(self->save_button), TRUE, TRUE, 0);
 
     GtkWidget* grid = gtk_grid_new();
@@ -133,6 +149,8 @@ oct_settings_popover_constructed(GObject* object)
     gtk_grid_set_column_spacing(GTK_GRID(grid), 10);
     gtk_grid_set_row_spacing(GTK_GRID(grid), 10);
     gtk_widget_show_all(grid);
+    gtk_widget_hide(self->success_icon);
+    gtk_widget_hide(self->error_icon);
 
     /* popover */
     gtk_container_add(GTK_CONTAINER(self), grid);
@@ -211,6 +229,17 @@ oct_settings_popover_test_complete(GObject*      source_object,
 {
     OctSettingsPopover* self = OCT_SETTINGS_POPOVER(source_object);
     gtk_spinner_stop(self->spinner);
+    GTask* task = G_TASK(result);
+    gtk_widget_hide(GTK_WIDGET(self->spinner));
+    if (g_task_propagate_boolean(task, NULL)) {
+        gtk_widget_show(self->success_icon);
+        gtk_widget_hide(self->error_icon);
+        printf("token is: %s\n", self->sync->token);
+    } else {
+        gtk_widget_hide(self->success_icon);
+        gtk_widget_show(self->error_icon);
+        printf("auth failed!\n");
+    }
 }
 
 static void
