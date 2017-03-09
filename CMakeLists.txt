@@ -58,6 +58,7 @@ add_executable(octopus
     ${CMAKE_SOURCE_DIR}/src/oct-settings-popover.c
     ${CMAKE_SOURCE_DIR}/src/oct-sync.c
     ${CMAKE_SOURCE_DIR}/src/oct-task-view.c
+    ${CMAKE_SOURCE_DIR}/src/oct-topic-view.c
 )
 target_link_libraries(octopus
     ${GTK3_LIBRARIES}
