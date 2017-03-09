@@ -2,7 +2,10 @@
 
 #include "oct-cell-renderer-button.h"
 
+#ifndef M_PI
 #define M_PI 3.14159
+#endif
+
 #define SIZE 16
 #define PADDING 4
 

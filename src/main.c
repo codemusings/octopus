@@ -11,7 +11,7 @@
 #define OCT_SCHEMA "de.codemusings.Octopus"
 
 static GSettings* settings = NULL;
-static OctSync* sync = NULL;
+static OctSync* sync_config = NULL;
 
 static void
 oct_application_activate(GApplication*, sqlite3*);
@@ -26,11 +26,13 @@ static void
 oct_application_activate(GApplication* app, sqlite3* database)
 {
     settings = g_settings_new(OCT_SCHEMA);
-    sync = malloc(sizeof(*sync));
-    sync->host = g_strdup(g_settings_get_string(settings, "sync-host"));
-    sync->port = g_settings_get_int(settings, "sync-port");
-    sync->username = g_strdup(g_settings_get_string(settings, "sync-username"));
-    sync->password = g_strdup(g_settings_get_string(settings, "sync-password"));
+    sync_config = malloc(sizeof(*sync_config));
+    sync_config->host = g_strdup(g_settings_get_string(settings, "sync-host"));
+    sync_config->port = g_settings_get_int(settings, "sync-port");
+    sync_config->username = g_strdup(
+        g_settings_get_string(settings, "sync-username"));
+    sync_config->password = g_strdup(
+        g_settings_get_string(settings, "sync-password"));
 
     GtkWidget* settings_icon = gtk_image_new_from_icon_name(
         "emblem-system-symbolic", GTK_ICON_SIZE_BUTTON);
@@ -38,7 +40,7 @@ oct_application_activate(GApplication* app, sqlite3* database)
     gtk_button_set_image(GTK_BUTTON(settings_button), settings_icon);
 
     GtkWidget* settings_popover;
-    settings_popover = oct_settings_popover_new(settings_button, sync);
+    settings_popover = oct_settings_popover_new(settings_button, sync_config);
     gtk_menu_button_set_popover(
         GTK_MENU_BUTTON(settings_button), settings_popover);
 
@@ -109,15 +111,15 @@ oct_application_shutdown(GApplication* app, sqlite3* database)
 {
     sqlite3_close(database);
 
-    g_settings_set_string(settings, "sync-host", sync->host);
-    g_settings_set_int(settings, "sync-port", sync->port);
-    g_settings_set_string(settings, "sync-username", sync->username);
-    g_settings_set_string(settings, "sync-password", sync->password);
+    g_settings_set_string(settings, "sync-host", sync_config->host);
+    g_settings_set_int(settings, "sync-port", sync_config->port);
+    g_settings_set_string(settings, "sync-username", sync_config->username);
+    g_settings_set_string(settings, "sync-password", sync_config->password);
 
-    g_free(sync->host);
-    g_free(sync->username);
-    g_free(sync->password);
-    g_free(sync);
+    g_free(sync_config->host);
+    g_free(sync_config->username);
+    g_free(sync_config->password);
+    g_free(sync_config);
 }
 
 int main(int argc, char** argv)
