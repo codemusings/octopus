@@ -22,6 +22,8 @@ oct_sync_auth(GTask*, gpointer, gpointer, GCancellable*);
 /** T A S K S *****************************************************************/
 typedef struct {
     sqlite3_int64 rowid;
+    char* id;
+    char* rev;
     char* description;
     bool completed;
 } OctTask;
