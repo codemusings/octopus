@@ -108,10 +108,8 @@ oct_task_view_init(OctTaskView *self)
     /* task view table */
     gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(self), FALSE);
     provider = gtk_css_provider_new();
-    gtk_css_provider_load_from_data(provider,
-        "treeview { background: #fffae1; }"
-        "treeview:selected { background: #4a90d9; }",
-    -1, NULL);
+    gtk_css_provider_load_from_data(
+        provider, "treeview:not(:selected) { background: #fffae1; }", -1, NULL);
     context = gtk_widget_get_style_context(GTK_WIDGET(self));
     gtk_style_context_add_provider(context,
         GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
