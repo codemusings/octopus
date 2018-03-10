@@ -9,17 +9,14 @@ res = gnome.compile_resources(
 srcs = [
     'main.c',
     'octopus.c',
+    'oct-application.c',
     'oct-cell-renderer-button.c',
-#    'oct-resources.c',
-    'oct-settings-popover.c',
-    'oct-sync.c',
     'oct-task-view.c',
     'oct-topic-view.c'
 ]
 deps = [
     dependency('gtk+-3.0'),
     dependency('json-glib-1.0'),
-    dependency('libcurl'),
     dependency('sqlite3')
 ]
 executable('octopus', res, install: true, sources: srcs, dependencies: deps)
