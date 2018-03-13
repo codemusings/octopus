@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Octopus
+Exec=octopus
+Comment=Yet another todo app
+Icon=de.codemusings.Octopus
+Terminal=false
