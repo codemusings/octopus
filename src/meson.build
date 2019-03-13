@@ -16,7 +16,6 @@ srcs = [
 ]
 deps = [
     dependency('gtk+-3.0'),
-    dependency('json-glib-1.0'),
     dependency('sqlite3')
 ]
 executable('octopus', res, install: true, sources: srcs, dependencies: deps)
